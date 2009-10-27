@@ -14,7 +14,7 @@ _host_exp = re.compile(
     r"\.wry\.ly" +
     r"(?P<port>:\d+)?")
 
-_body_exp = re.compile(r"</body>", re.I)
+_head_exp = re.compile(r"<head[^>].*>", re.I)
 
 define("port", default=8888, help="run on the given port", type=int)
 
@@ -69,8 +69,8 @@ class WryHandler(tornado.web.RequestHandler):
         if "html" in ct:
             self.set_header("Content-Type", ct)
             self.write(re.sub(
-                _body_exp,
-                "<script src='http://static.wry.ly/frag.js'></script></body>",
+                _head_exp,
+                "\g<0><script defer='defer' src='http://static.wry.ly/frag.js'></script>",
                 response.body))
             self.finish()
         else:
