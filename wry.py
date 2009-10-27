@@ -19,7 +19,7 @@ _host_exp = re.compile(
 
 define("port", default=8888, help="run on the given port", type=int)
 
-class MainHandler(tornado.web.RequestHandler):
+class WryHandler(tornado.web.RequestHandler):
 
     def _parse(self):
         m = _host_exp.match(self.request.host)
@@ -30,13 +30,15 @@ class MainHandler(tornado.web.RequestHandler):
                               self.request.query])
         } if m else None
 
+    def _fail_wryly(self):
+        self.write("My, my. Aren't we feeling wry?")
+        self.finish();
+
     @tornado.web.asynchronous
     def get(self):
         parsed = self._parse()
         if parsed is None:
-            self.write("My, my. Aren't we feeling wry?")
-            self.finish();
-            return
+            return self._fail_wryly()
         if parsed["slug"] is None:
             pass # TODO
         tornado.httpclient.AsyncHTTPClient().fetch(
@@ -45,14 +47,14 @@ class MainHandler(tornado.web.RequestHandler):
 
     def on_response(self, response):
         if response.error:
-            raise tornado.web.HTTPError(500)
-        # TODO either find a way to get response headers from pycurl,
-        # or switch to httplib2 (probably the latter)
+            return self._fail_wryly()
+        self.set_header("Content-Type", 
+                        response.headers["Content-Type"])
         self.write(response.body)
         self.finish()
 
 application = tornado.web.Application([
-    (r".*", MainHandler),
+    (r".*", WryHandler),
 ])
 
 if __name__ == "__main__":

@@ -1,0 +1,33 @@
+Slug position
+=============
+
+First possibility: example.com.51ug.wry.ly
+
+  Requires that the slug be distinguishable from all top-level
+  domains, which is easily accomplished by including numbers.
+
+  Requires a redirect that may not reliably preserve document
+  #fragments, and incurs additional network overhead.
+
+Second possibility: example.com.wry.ly/path/to/resource#51ug
+
+  Does not require a redirect; can be added dynamically by the
+  injected script.
+
+  Ambiguous behavior in case of existing fragment identifier.
+
+  Idea: use existing identifier as conversation key. Concerns:
+
+    Must existing identifiers become global conversation points?
+
+    Can conversation keys still span multiple pages? Should they?
+
+    How to distinguish first accessors from subsequent viewers?
+
+
+Purpose of the system
+=====================
+
+Mimimalistic: support arbitrary user-defined fragment identifiers.
+
+Conversations: socially networked, or topically siloed?
