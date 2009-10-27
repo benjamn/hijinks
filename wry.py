@@ -39,18 +39,28 @@ class WryHandler(tornado.web.RequestHandler):
         self.set_header("Location", url)
         self.finish()
 
+    def _accepts_html(self):
+        hdrs = self.request.headers
+        if "Accept" not in hdrs:
+            return True # accepts anything
+        preferred = hdrs["Accept"].split(";")[0].lower()
+        return ("html" in preferred or
+                "xml" in preferred or
+                "text/*" in preferred or
+                "*/*" in preferred or
+                not preferred.strip())
+
     @tornado.web.asynchronous
     def get(self):
         parsed = self._parse()
         if parsed is None:
             return self._fail_wryly()
         url = "http://%(host)s%(port)s%(path)s" % parsed
-        hdrs = self.request.headers
-        if "Accept" in hdrs and "html" not in hdrs["Accept"].lower():
-            self._redirect(url)
-        else:
+        if self._accepts_html():
             tornado.httpclient.AsyncHTTPClient().fetch(url,
                 callback=self.async_callback(self.on_response, url))
+        else:
+            self._redirect(url)
 
     def on_response(self, url, response):
         if response.error:
