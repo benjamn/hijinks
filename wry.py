@@ -9,12 +9,18 @@ import tornado.web
 from tornado.options import define, options
 
 import re
+
 _host_exp = re.compile(
     r"(?P<host>.*?)" + 
     r"\.wry\.ly" +
-    r"(?P<port>:\d+)?")
+    r"(?P<port>:\d+)?",
+    re.IGNORECASE)
 
-_head_exp = re.compile(r"<head.*?>", re.I)
+_head_exp = re.compile(
+    r"<head.*?>", 
+    re.IGNORECASE | 
+    re.MULTILINE |
+    re.DOTALL)
 
 define("port", default=8888, help="run on the given port", type=int)
 
