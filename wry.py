@@ -8,14 +8,13 @@ import tornado.web
 
 from tornado.options import define, options
 
-from settings import SUFFIX, SLUG_EXP
-
 import re
 _host_exp = re.compile(
     r"(?P<host>.*?)" + 
-    r"(?:\.(?P<slug>" + SLUG_EXP + r"))?" +
-    r"\." + SUFFIX +
+    r"\.wry\.ly" +
     r"(?P<port>:\d+)?")
+
+_head_exp = re.compile(r"</head>", re.I)
 
 define("port", default=8888, help="run on the given port", type=int)
 
@@ -24,8 +23,8 @@ class WryHandler(tornado.web.RequestHandler):
     def _parse(self):
         m = _host_exp.match(self.request.host)
         return {
-            "host": m.group("host") + (m.group("port") or ""),
-            "slug": m.group("slug"),
+            "host": m.group("host"),
+            "port": m.group("port") or "",
             "path": "?".join([self.request.path,
                               self.request.query])
         } if m else None
@@ -39,18 +38,23 @@ class WryHandler(tornado.web.RequestHandler):
         parsed = self._parse()
         if parsed is None:
             return self._fail_wryly()
-        if parsed["slug"] is None:
-            pass # TODO
-        tornado.httpclient.AsyncHTTPClient().fetch(
-            "http://%(host)s%(path)s" % parsed,
-            callback=self.async_callback(self.on_response))
+        url = "http://%(host)s%(port)s%(path)s" % parsed
+        tornado.httpclient.AsyncHTTPClient().fetch(url,
+            callback=self.async_callback(self.on_response, url))
 
-    def on_response(self, response):
+    def on_response(self, url, response):
         if response.error:
             return self._fail_wryly()
-        self.set_header("Content-Type", 
-                        response.headers["Content-Type"])
-        self.write(response.body)
+        ct = response.headers["Content-Type"]
+        if "html" in ct:
+            self.set_header("Content-Type", ct)
+            self.write(re.sub(
+                _head_exp,
+                "<script src='http://static.wry.ly/frag.js'></script></head>",
+                response.body))
+        else:
+            self.set_status(301)
+            self.set_header("Location", url)
         self.finish()
 
 application = tornado.web.Application([
