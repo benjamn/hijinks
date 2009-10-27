@@ -14,7 +14,7 @@ _host_exp = re.compile(
     r"\.wry\.ly" +
     r"(?P<port>:\d+)?")
 
-_head_exp = re.compile(r"<head[^>].*>", re.I)
+_head_exp = re.compile(r"<head.*?>", re.I)
 
 define("port", default=8888, help="run on the given port", type=int)
 
