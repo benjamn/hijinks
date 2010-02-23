@@ -1,6 +1,11 @@
 Tornado[^1]-based, nginx[^2]-friendly proxy server designed to aid and
 abet the world-domination pretensions of the wry[^3] project.
 
+Tornado is an asynchronous webserver based on epoll, so epoll is
+required for this code to run. I have been using a 256MB rackspace[^4]
+cloud server.
+
 [1]: http://github.com/facebook/tornado
 [2]: http://nginx.org/en/download.html
 [3]: http://github.com/benjamn/wry
+[4]: http://www.rackspacecloud.com
