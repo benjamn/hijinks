@@ -1,0 +1,6 @@
+Tornado[^1]-based, nginx[^2]-friendly proxy server designed to aid and
+abet the world-domination pretensions of the wry[^3] project.
+
+[1]: http://github.com/facebook/tornado
+[2]: http://nginx.org/en/download.html
+[3]: http://github.com/benjamn/wry
