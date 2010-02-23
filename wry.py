@@ -23,6 +23,14 @@ _head_exp = re.compile(
     re.DOTALL)
 
 define("port", default=8888, help="run on the given port", type=int)
+define("subdomain", default="dev", 
+       help="the subdomain of wry.ly from which to load JavaScript",
+       type=str)
+
+_html_to_inject = """
+<script src="http://%s.wry.ly/js/loader.js"
+        require="http://%s.wry.ly/js#wry/banter">
+</script>"""
 
 class WryHandler(tornado.web.RequestHandler):
 
@@ -45,7 +53,7 @@ class WryHandler(tornado.web.RequestHandler):
         self.set_header("Location", url)
         self.finish()
 
-    def _accepts_html(self):
+    def _should_fetch(self):
         hdrs = self.request.headers
         if "Accept" not in hdrs:
             return True # accepts anything
@@ -61,8 +69,12 @@ class WryHandler(tornado.web.RequestHandler):
         parsed = self._parse()
         if parsed is None:
             return self._fail_wryly()
-        url = "http://%(host)s%(port)s%(path)s" % parsed
-        if self._accepts_html():
+        #url = "http://%(host)s%(port)s%(path)s" % parsed
+        url = "http://%(host)s%(path)s" % parsed # ignore port
+        # TODO handle .js requests that depend on Referer header
+        # TODO always request urls that have query strings?
+        if self._should_fetch():
+            # print "referer: ", url
             tornado.httpclient.AsyncHTTPClient().fetch(url,
                 callback=self.async_callback(self.on_response, url))
         else:
@@ -71,12 +83,15 @@ class WryHandler(tornado.web.RequestHandler):
     def on_response(self, url, response):
         if response.error:
             return self._fail_wryly()
-        ct = response.headers["Content-Type"]
+        try:
+            ct = response.headers["Content-Type"].lower()
+        except:
+            ct = "text/html"
         if "html" in ct:
             self.set_header("Content-Type", ct)
             self.write(re.sub(
                 _head_exp,
-                "\g<0><script defer='defer' src='http://static.wry.ly/frag.js'></script>",
+                "\g<0>" + _html_to_inject,
                 response.body))
             self.finish()
         else:
@@ -88,6 +103,8 @@ application = tornado.web.Application([
 
 if __name__ == "__main__":
     tornado.options.parse_command_line()
+    subdomain = str(options.subdomain) # TODO
+    _html_to_inject = _html_to_inject % (subdomain, subdomain)
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
