@@ -23,9 +23,10 @@ _head_exp = re.compile(
     re.DOTALL)
 
 _src_href_exp = re.compile(
-    "((?:src|href)=['\"])/",
+    "((?:src|<link[^>]+href)=['\"])/",
     re.IGNORECASE |
-    re.MULTILINE)
+    re.MULTILINE |
+    re.DOTALL)
 
 define("port", default=8888, help="run on the given port", type=int)
 
@@ -116,7 +117,10 @@ class WryHandler(tornado.web.RequestHandler):
 
             self.write(response.body)
 
-            self.finish()
+            # Fails sometimes because the stream is already closed.
+            try: self.finish()
+            except: pass
+
         else:
             self._redirect(parsed["url"])
 
