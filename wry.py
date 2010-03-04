@@ -35,7 +35,7 @@ define("subdomain", default=_subdomain,
        help="the subdomain of wry.ly from which to load JavaScript",
        type=str)
 
-def html_to_inject(base, subdomain=_subdomain):
+def html_to_inject(base, subdomain):
     return """
 <script src="http://%(subdomain)s.wry.ly/js/loader.js"
         require="http://%(subdomain)s.wry.ly/js#wry/banter">
@@ -112,7 +112,7 @@ class WryHandler(tornado.web.RequestHandler):
             # Perform the <script> and <base> injection.
             response.body = re.sub(
                 _head_exp,
-                "\g<0>" + html_to_inject(parsed["url"]),
+                "\g<0>" + html_to_inject(parsed["url"], _subdomain),
                 response.body)
 
             self.write(response.body)
