@@ -22,6 +22,11 @@ _head_exp = re.compile(
     re.MULTILINE |
     re.DOTALL)
 
+_src_href_exp = re.compile(
+    "((?:src|href)=['\"])/",
+    re.IGNORECASE |
+    re.MULTILINE)
+
 define("port", default=8888, help="run on the given port", type=int)
 
 _subdomain = "dev"
@@ -40,13 +45,18 @@ class WryHandler(tornado.web.RequestHandler):
 
     def _parse(self):
         m = _host_exp.match(self.request.host)
+        if not m:
+            return None
         q = self.request.query
         q = q and ("?" + q)
-        return {
+        parsed = {
             "host": m.group("host"),
             "port": m.group("port") or "",
             "path": self.request.path + q
-        } if m else None
+        }
+        # Yes, we parsed the port, but ignore it here:
+        parsed["url"] = "http://%(host)s%(path)s" % parsed
+        return parsed
 
     def _fail_wryly(self):
         self.write("My, my. Aren't we feeling wry?")
@@ -73,33 +83,42 @@ class WryHandler(tornado.web.RequestHandler):
         parsed = self._parse()
         if parsed is None:
             return self._fail_wryly()
-        #url = "http://%(host)s%(port)s%(path)s" % parsed
-        url = "http://%(host)s%(path)s" % parsed # ignore port
-        # TODO handle .js requests that depend on Referer header
-        # TODO always request urls that have query strings?
         if self._should_fetch():
-            # print "referer: ", url
-            tornado.httpclient.AsyncHTTPClient().fetch(url,
-                callback=self.async_callback(self.on_response, url))
+            tornado.httpclient.AsyncHTTPClient().fetch(parsed["url"],
+                callback=self.async_callback(self.on_response, parsed))
         else:
-            self._redirect(url)
+            self._redirect(parsed["url"])
 
-    def on_response(self, url, response):
+    def on_response(self, parsed, response):
         if response.error:
             return self._fail_wryly()
+
         try:
             ct = response.headers["Content-Type"].lower()
         except:
             ct = "text/html"
+
         if "html" in ct:
             self.set_header("Content-Type", ct)
-            self.write(re.sub(
+
+            # Really absolutize src attributes that aren't affected by the
+            # <base> element.
+            response.body = re.sub(
+                _src_href_exp,
+                "\g<1>http://%(host)s/" % parsed,
+                response.body)
+
+            # Perform the <script> and <base> injection.
+            response.body = re.sub(
                 _head_exp,
-                "\g<0>" + html_to_inject(url),
-                response.body))
+                "\g<0>" + html_to_inject(parsed["url"]),
+                response.body)
+
+            self.write(response.body)
+
             self.finish()
         else:
-            self._redirect(url)
+            self._redirect(parsed["url"])
 
 if __name__ == "__main__":
     tornado.options.parse_command_line()
