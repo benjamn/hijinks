@@ -23,14 +23,18 @@ _head_exp = re.compile(
     re.DOTALL)
 
 define("port", default=8888, help="run on the given port", type=int)
-define("subdomain", default="dev", 
+
+_subdomain = "dev"
+define("subdomain", default=_subdomain,
        help="the subdomain of wry.ly from which to load JavaScript",
        type=str)
 
-_html_to_inject = """
-<script src="http://%s.wry.ly/js/loader.js"
-        require="http://%s.wry.ly/js#wry/banter">
-</script>"""
+def html_to_inject(base, subdomain=_subdomain):
+    return """
+<script src="http://%(subdomain)s.wry.ly/js/loader.js"
+        require="http://%(subdomain)s.wry.ly/js#wry/banter">
+</script>
+<base href="%(base)s" />""" % locals()
 
 class WryHandler(tornado.web.RequestHandler):
 
@@ -91,20 +95,18 @@ class WryHandler(tornado.web.RequestHandler):
             self.set_header("Content-Type", ct)
             self.write(re.sub(
                 _head_exp,
-                "\g<0>" + _html_to_inject,
+                "\g<0>" + html_to_inject(url),
                 response.body))
             self.finish()
         else:
             self._redirect(url)
 
-application = tornado.web.Application([
-    (r".*", WryHandler),
-])
-
 if __name__ == "__main__":
     tornado.options.parse_command_line()
-    subdomain = str(options.subdomain) # TODO
-    _html_to_inject = _html_to_inject % (subdomain, subdomain)
-    http_server = tornado.httpserver.HTTPServer(application)
-    http_server.listen(options.port)
+    _subdomain = str(options.subdomain)
+
+    tornado.httpserver.HTTPServer(tornado.web.Application([
+        (r".*", WryHandler),
+    ])).listen(options.port)
+
     tornado.ioloop.IOLoop.instance().start()
