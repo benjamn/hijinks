@@ -102,20 +102,21 @@ class WryHandler(tornado.web.RequestHandler):
         if "html" in ct:
             self.set_header("Content-Type", ct)
 
+            body = response.body
             # Really absolutize src attributes that aren't affected by the
             # <base> element.
-            response.body = re.sub(
+            body = re.sub(
                 _src_href_exp,
                 "\g<1>http://%(host)s/" % parsed,
-                response.body)
+                body)
 
             # Perform the <script> and <base> injection.
-            response.body = re.sub(
+            body = re.sub(
                 _head_exp,
                 "\g<0>" + html_to_inject(parsed["url"], _subdomain),
-                response.body)
+                body)
 
-            self.write(response.body)
+            self.write(body)
 
             # Fails sometimes because the stream is already closed.
             try: self.finish()
